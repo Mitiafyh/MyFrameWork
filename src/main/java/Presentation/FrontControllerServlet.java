@@ -1,4 +1,4 @@
-package main.java.Presentation;
+package Presentation;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,3 +26,4 @@ public class FrontControllerServlet extends HttpServlet {
         out.println(uri);
 
     }
+}
