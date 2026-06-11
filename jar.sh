@@ -7,7 +7,7 @@ PATH_TOMCAT="/home/fiorenantsoa/Documents/tomcat/tomcat"
 cd $PATH_FRAMEWORK
 mkdir -p bin
 echo "Compilation du Servlet..."
-javac -cp "$PATH_TOMCAT/lib/servlet-api.jar" -d bin src/main/java/Presentation/*.java
+javac -cp "$PATH_FRAMEWORK/lib/servlet-api.jar" -d bin src/main/java/Presentation/*.java
 
 jar cvf $APP_NAME.jar -C bin .
 
@@ -16,7 +16,9 @@ TARGET_LIB="$PATH_APP_TEST/lib"
 mkdir -p "$TARGET_LIB"
 
 echo Deploiement vers AppTest...
-cp -r $APP_NAME.jar "$TARGET_LIB/"
+cp -r lib/$APP_NAME.jar "$TARGET_LIB/"
+cp -r lib/servlet-api.jar "$TARGET_LIB/"
+
 
 echo ==========================================
 echo   DEPLOYE AVEC SUCCES !
