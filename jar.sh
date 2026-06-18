@@ -7,9 +7,9 @@ PATH_TOMCAT="/home/fiorenantsoa/Documents/tomcat/tomcat"
 cd $PATH_FRAMEWORK
 mkdir -p bin
 echo "Compilation du Servlet..."
-javac -cp "$PATH_FRAMEWORK/lib/servlet-api.jar" -d bin src/main/java/Presentation/*.java
+javac -cp "$PATH_FRAMEWORK/lib/servlet-api.jar" -d bin src/main/java/annotation/*.java src/main/java/Presentation/*.java src/main/java/Utils/*.java
 
-jar cvf $APP_NAME.jar -C bin .
+jar cvf lib/$APP_NAME.jar -C bin .
 
 echo "creation dossier "
 TARGET_LIB="$PATH_APP_TEST/lib"
