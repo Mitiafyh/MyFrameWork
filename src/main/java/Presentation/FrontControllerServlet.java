@@ -6,16 +6,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import Utils.*;
+import annotation.UrlMapping;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    private List<Class<?>> classesControllers;
+    private Map<String, Mapping> mappingUrls = new HashMap<>();
 
-        Utilitaire utilitaire = new Utilitaire();
+    Utilitaire utilitaire = new Utilitaire();
 
     @Override
     public void init() throws ServletException {
@@ -26,8 +29,19 @@ public class FrontControllerServlet extends HttpServlet {
             return;
         }
 
-        this.classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
-
+        List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
+        if (classesControllers != null) {
+            for (Class<?> classe : classesControllers) {
+                List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
+                if (methodes != null && !methodes.isEmpty()) {
+                    for (Method methode : methodes) {
+                        UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
+                        Mapping mapping = new Mapping(classe, methode);
+                        this.mappingUrls.put(urlMapping.value(), mapping);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -46,37 +60,24 @@ public class FrontControllerServlet extends HttpServlet {
 
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
-        out.println(uri + "<br>");
 
-        out.println("\n");
-        out.println("\n");
+        if (this.mappingUrls.containsKey(path)) {
+            Mapping cible = this.mappingUrls.get(path);
 
-        out.println("Classes avec annotation @Controller : " + "<br>");
-
-        if (this.classesControllers != null) {
-            for (Class<?> classe : this.classesControllers) {
-                out.println(" - " + classe.getName() + "<br><br>");
-
-            }
+            out.println("<h3>Route trouvée !</h3>");
+            out.println("URL  : " + path + "<br>");
+            out.println("Classe : " + cible.getClassController().getName() + "<br>");
+            out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
         } else {
-            out.println(" Pas de classes avec l'annotation ");
-
-        }
-
-        Map<String, String> url = utilitaire.GetUrl(this.classesControllers, annotation.UrlMapping.class, path);
-        if (url != null && !url.isEmpty()) {
-            out.println("Cet URL existe, voici les informations de l'URL : " + "<br>");
-            out.println("URL: " + url.get("URL") + "  Class: " + url.get("className") + "  Method: " + url.get("NomMethode") + "<br>");
-        } else {
-
-            out.println("Cet URL n'existe pas, voici les URL existant");
-            List<Map<String, String>> url1 = utilitaire.GetAllUrl(this.classesControllers, annotation.UrlMapping.class);
-
-
-            for (Map<String, String> url2 : url1) {
-                out.println("URL: " + url2.get("URL") + "  Class: " + url2.get("className") + "  Method: " + url2.get("NomMethode") + "<br>");
+            out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + "</h3>");
+            out.println("<h3>Liste des routes disponibles :</h3>");
+            for (Map.Entry<String, Mapping> exist : this.mappingUrls.entrySet()) {
+                String url = exist.getKey();
+                Mapping mapping = exist.getValue();
+                out.println("URL  : " + url + "<br>");
+                out.println("Classe : " + mapping.getClassController().getName() + "<br>");
+                out.println("Méthode associée : " + mapping.getMethode().getName() + "()<br>");
             }
-
         }
 
     }
