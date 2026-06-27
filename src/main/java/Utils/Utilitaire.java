@@ -1,14 +1,29 @@
 package Utils;
 
+import annotation.UrlMapping;
 import java.io.File;
-import java.lang.annotation.Annotation;
+import java.lang.annotation.*;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Utilitaire {
 
-    public static List<Class<?>> getClassesWithAnnotation(String NomPackage, Class<? extends Annotation> annotationClass) {
+    public List<Method> getAllMethodeAnnote(Class<?> classe, Class<? extends Annotation> annotationClass) {
+        List<Method> listeMethode = new ArrayList<>();
+        Method[] methods = classe.getDeclaredMethods();
+        for (Method methode : methods) {
+            if (methode.isAnnotationPresent(annotationClass)) {
+                listeMethode.add(methode);
+            }
+        }
+        return listeMethode;
+    }
+
+    public List<Class<?>> getClassesWithAnnotation(String NomPackage, Class<? extends Annotation> annotationClass) {
         List<Class<?>> listeClasse = getAllClasse(NomPackage);
         List<Class<?>> classWithAnnotation = new ArrayList<>();
         for (Class<?> classe : listeClasse) {
@@ -19,12 +34,12 @@ public class Utilitaire {
         return classWithAnnotation;
     }
 
-    public static List<Class<?>> getAllClasse(String NomPackage) {
+    public List<Class<?>> getAllClasse(String NomPackage) {
         List<Class<?>> listClass = new ArrayList<>();
         String path = NomPackage.replace(".", "/");
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         URL resource = classLoader.getResource(path);
-        if(resource == null) {
+        if (resource == null) {
             return listClass;
         }
         try {

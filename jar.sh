@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 APP_NAME="MyFrameWork"
 PATH_FRAMEWORK="/home/fiorenantsoa/Documents/GitHub/MyFrameWork"
 PATH_APP_TEST="/home/fiorenantsoa/Documents/S4/WebDynamique/AppTest"
@@ -16,8 +18,8 @@ TARGET_LIB="$PATH_APP_TEST/lib"
 mkdir -p "$TARGET_LIB"
 
 echo Deploiement vers AppTest...
-cp -r lib/$APP_NAME.jar "$TARGET_LIB/"
-cp -r lib/servlet-api.jar "$TARGET_LIB/"
+cp "lib/$APP_NAME.jar" "$TARGET_LIB/"
+cp "lib/servlet-api.jar" "$TARGET_LIB/"
 
 
 echo ==========================================
