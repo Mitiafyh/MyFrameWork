@@ -28,17 +28,22 @@ public class FrontControllerServlet extends HttpServlet {
             System.out.println("Erreur : Le paramètre 'packageToScan' n'est pas configuré dans le web.xml !");
             return;
         }
-
         List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
         if (classesControllers != null) {
             for (Class<?> classe : classesControllers) {
-                List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
-                if (methodes != null && !methodes.isEmpty()) {
-                    for (Method methode : methodes) {
-                        UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
-                        Mapping mapping = new Mapping(classe, methode);
-                        this.mappingUrls.put(urlMapping.value(), mapping);
+                try {
+                    List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
+                    if (methodes != null && !methodes.isEmpty()) {
+                        Object instanceUnique = classe.getDeclaredConstructor().newInstance();
+                        for (Method methode : methodes) {
+                            UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
+                            Mapping mapping = new Mapping(instanceUnique, methode);
+                            this.mappingUrls.put(urlMapping.value(), mapping);
+                        }
                     }
+                } catch (Exception e) {
+                    System.out.println("Erreur lors du pré-chargement du Singleton pour la classe " + classe.getName());
+                    e.printStackTrace();
                 }
             }
         }
@@ -66,7 +71,7 @@ public class FrontControllerServlet extends HttpServlet {
 
             out.println("<h3>Route trouvée !</h3>");
             out.println("URL  : " + path + "<br>");
-            out.println("Classe : " + cible.getClassController().getName() + "<br>");
+            out.println("Classe : " + cible.getControllerInstance().getClass().getName() + "<br>");
             out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
         } else {
             out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + "</h3>");
@@ -75,7 +80,7 @@ public class FrontControllerServlet extends HttpServlet {
                 String url = exist.getKey();
                 Mapping mapping = exist.getValue();
                 out.println("URL  : " + url + "<br>");
-                out.println("Classe : " + mapping.getClassController().getName() + "<br>");
+                out.println("Classe : " + mapping.getControllerInstance().getClass().getName() + "<br>");
                 out.println("Méthode associée : " + mapping.getMethode().getName() + "()<br>");
             }
         }
