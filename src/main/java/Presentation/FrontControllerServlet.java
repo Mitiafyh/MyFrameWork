@@ -37,8 +37,11 @@ public class FrontControllerServlet extends HttpServlet {
                         Object instanceUnique = classe.getDeclaredConstructor().newInstance();
                         for (Method methode : methodes) {
                             UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
+                            String url = urlMapping.value();
+                            String httpMethod = urlMapping.method().toUpperCase();
+                            String key = httpMethod + url;
                             Mapping mapping = new Mapping(instanceUnique, methode);
-                            this.mappingUrls.put(urlMapping.value(), mapping);
+                            this.mappingUrls.put(key, mapping);
                         }
                     }
                 } catch (Exception e) {
@@ -62,19 +65,23 @@ public class FrontControllerServlet extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String uri = request.getRequestURI();
         String path = request.getPathInfo();
+        if (path == null) path = "/";
+
+        String requestMethod = request.getMethod().toUpperCase();
+        String key = requestMethod + path;
 
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
 
-        if (this.mappingUrls.containsKey(path)) {
-            Mapping cible = this.mappingUrls.get(path);
+        if (this.mappingUrls.containsKey(key)) {
+            Mapping cible = this.mappingUrls.get(key);
 
             out.println("<h3>Route trouvée !</h3>");
-            out.println("URL  : " + path + "<br>");
+            out.println("URL  : " + path + ",methode "+requestMethod+"<br>");
             out.println("Classe : " + cible.getControllerInstance().getClass().getName() + "<br>");
             out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
         } else {
-            out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + "</h3>");
+            out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + ",methode "+requestMethod+ "</h3>");
             out.println("<h3>Liste des routes disponibles :</h3>");
             for (Map.Entry<String, Mapping> exist : this.mappingUrls.entrySet()) {
                 String url = exist.getKey();
