@@ -4,20 +4,20 @@ import java.lang.reflect.Method;
 
 public class Mapping {
 
-    private Class<?> classController;
+    private Class<?> controllerInstance;
     private Method methode;
 
-    public Mapping(Class<?> classe,Method methode){
-        this.classController = classe;        
-         this.methode  = methode;
+    public Mapping(Class<?> instance, Method methode) {
+        this.controllerInstance = instance;
+        this.methode = methode;
     }
 
-    public Class<?> getClassController() {
-        return classController;
+    public Class<?> getControllerInstance() {
+        return controllerInstance;
     }
 
-    public void setClassController(Class<?> c) {
-        this.classController = c;
+    public void setControllerInstance(Class<?> c) {
+        this.controllerInstance = c;
     }
 
     public Method getMethode() {

@@ -16,7 +16,7 @@ import annotation.UrlMapping;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    private Map<String, Mapping> mappingUrls = new HashMap<>();
+    private Map<UrlMethod, Mapping> mappingUrls = new HashMap<>();
 
     Utilitaire utilitaire = new Utilitaire();
 
@@ -28,18 +28,23 @@ public class FrontControllerServlet extends HttpServlet {
             System.out.println("Erreur : Le paramètre 'packageToScan' n'est pas configuré dans le web.xml !");
             return;
         }
-
         List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
         if (classesControllers != null) {
             for (Class<?> classe : classesControllers) {
-                List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
-                if (methodes != null && !methodes.isEmpty()) {
-                    for (Method methode : methodes) {
-                        UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
-                        Mapping mapping = new Mapping(classe, methode);
-                        this.mappingUrls.put(urlMapping.value(), mapping);
+               
+                    List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
+                    if (methodes != null && !methodes.isEmpty()) {
+                        for (Method methode : methodes) {
+                            UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
+                            String url = urlMapping.value();
+                            String httpMethod = urlMapping.method().toUpperCase();
+                            HttpMethod method = HttpMethod.valueOf(httpMethod);
+                            UrlMethod urlMethod = new UrlMethod(url, method);
+                            Mapping mapping = new Mapping(classe, methode);
+                            this.mappingUrls.put(urlMethod, mapping);
+                        }
                     }
-                }
+               
             }
         }
     }
@@ -57,25 +62,31 @@ public class FrontControllerServlet extends HttpServlet {
     protected void processRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String uri = request.getRequestURI();
         String path = request.getPathInfo();
+        if (path == null || path.equals("/")) {
+            path = request.getServletPath();
+        }
+
+        HttpMethod requestMethod = HttpMethod.valueOf(request.getMethod().toUpperCase());
+        UrlMethod urlMethod = new UrlMethod(path, requestMethod);
 
         response.setContentType("text/html");
         PrintWriter out = response.getWriter();
 
-        if (this.mappingUrls.containsKey(path)) {
-            Mapping cible = this.mappingUrls.get(path);
+        if (this.mappingUrls.containsKey(urlMethod)) {
+            Mapping cible = this.mappingUrls.get(urlMethod);
 
             out.println("<h3>Route trouvée !</h3>");
-            out.println("URL  : " + path + "<br>");
-            out.println("Classe : " + cible.getClassController().getName() + "<br>");
+            out.println("URL  : " + urlMethod.getUrl() + ",methode " + urlMethod.getMethod() + "<br>");
+            out.println("Classe : " + cible.getControllerInstance().getName() + "<br>");
             out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
         } else {
-            out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + "</h3>");
+            out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + ",methode " + requestMethod + "</h3>");
             out.println("<h3>Liste des routes disponibles :</h3>");
-            for (Map.Entry<String, Mapping> exist : this.mappingUrls.entrySet()) {
-                String url = exist.getKey();
+            for (Map.Entry<UrlMethod, Mapping> exist : this.mappingUrls.entrySet()) {
+                UrlMethod methode = exist.getKey();
                 Mapping mapping = exist.getValue();
-                out.println("URL  : " + url + "<br>");
-                out.println("Classe : " + mapping.getClassController().getName() + "<br>");
+                out.println("URL  : " + methode.getUrl() + ", Méthode : " + methode.getMethod() + "<br>");
+                out.println("Classe : " + mapping.getControllerInstance().getName() + "<br>");
                 out.println("Méthode associée : " + mapping.getMethode().getName() + "()<br>");
             }
         }
