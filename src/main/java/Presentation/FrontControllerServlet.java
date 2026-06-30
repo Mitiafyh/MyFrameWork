@@ -32,10 +32,6 @@ public class FrontControllerServlet extends HttpServlet {
         List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
         if (classesControllers != null) {
             for (Class<?> classe : classesControllers) {
-<<<<<<< HEAD
-               
-=======
->>>>>>> Sprint3_BIs_execution
                     List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
                     if (methodes != null && !methodes.isEmpty()) {
                         for (Method methode : methodes) {
@@ -55,11 +51,6 @@ public class FrontControllerServlet extends HttpServlet {
                             this.mappingUrls.put(urlMethod, mapping);
                         }
                     }
-<<<<<<< HEAD
-               
-=======
-                
->>>>>>> Sprint3_BIs_execution
             }
         }
     }
