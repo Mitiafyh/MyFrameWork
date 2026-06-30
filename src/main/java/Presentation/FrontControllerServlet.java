@@ -13,6 +13,7 @@ import java.util.Map;
 
 import Utils.*;
 import annotation.UrlMapping;
+import java.rmi.server.ServerCloneException;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -31,7 +32,6 @@ public class FrontControllerServlet extends HttpServlet {
         List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
         if (classesControllers != null) {
             for (Class<?> classe : classesControllers) {
-                try {
                     List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
                     if (methodes != null && !methodes.isEmpty()) {
                         for (Method methode : methodes) {
@@ -40,14 +40,18 @@ public class FrontControllerServlet extends HttpServlet {
                             String httpMethod = urlMapping.method().toUpperCase();
                             HttpMethod method = HttpMethod.valueOf(httpMethod);
                             UrlMethod urlMethod = new UrlMethod(url, method);
+
+                            if (this.mappingUrls.containsKey(urlMethod)) {
+                                throw new ServletException("Erreur : Conflit de mapping pour l'URL " 
+                                + url + " avec la méthode HTTP " + httpMethod 
+                                + ". Deux méthodes annotées avec @UrlMapping ont le même chemin et la même méthode HTTP.");
+                            }
+
                             Mapping mapping = new Mapping(classe, methode);
                             this.mappingUrls.put(urlMethod, mapping);
                         }
                     }
-                } catch (Exception e) {
-                    System.out.println("Erreur lors du pré-chargement du Singleton pour la classe " + classe.getName());
-                    e.printStackTrace();
-                }
+                
             }
         }
     }
@@ -87,10 +91,10 @@ public class FrontControllerServlet extends HttpServlet {
                 Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
                 Method methodeAExecuter = cible.getMethode();
                 methodeAExecuter.invoke(instanceControleur);
-                
 
             } catch (Exception e) {
-                e.printStackTrace(out); 
+                e.printStackTrace(out);
+                out.println("<h3>Erreur lors de l'exécution de la méthode : " + e.getMessage() + "</h3>");
             }
         } else {
             out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + ",methode " + requestMethod + "</h3>");
