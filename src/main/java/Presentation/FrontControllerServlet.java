@@ -82,6 +82,16 @@ public class FrontControllerServlet extends HttpServlet {
             out.println("URL  : " + urlMethod.getUrl() + ",methode " + urlMethod.getMethod() + "<br>");
             out.println("Classe : " + cible.getControllerInstance().getName() + "<br>");
             out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
+            try {
+                Class<?> classeDuControleur = cible.getControllerInstance();
+                Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
+                Method methodeAExecuter = cible.getMethode();
+                methodeAExecuter.invoke(instanceControleur);
+                
+
+            } catch (Exception e) {
+                e.printStackTrace(out); 
+            }
         } else {
             out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + ",methode " + requestMethod + "</h3>");
             out.println("<h3>Liste des routes disponibles :</h3>");
