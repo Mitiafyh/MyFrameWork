@@ -31,7 +31,7 @@ public class FrontControllerServlet extends HttpServlet {
         List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
         if (classesControllers != null) {
             for (Class<?> classe : classesControllers) {
-                try {
+               
                     List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
                     if (methodes != null && !methodes.isEmpty()) {
                         for (Method methode : methodes) {
@@ -44,10 +44,7 @@ public class FrontControllerServlet extends HttpServlet {
                             this.mappingUrls.put(urlMethod, mapping);
                         }
                     }
-                } catch (Exception e) {
-                    System.out.println("Erreur lors du pré-chargement du Singleton pour la classe " + classe.getName());
-                    e.printStackTrace();
-                }
+               
             }
         }
     }
