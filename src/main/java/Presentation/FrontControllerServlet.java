@@ -51,7 +51,6 @@ public class FrontControllerServlet extends HttpServlet {
                             this.mappingUrls.put(urlMethod, mapping);
                         }
                     }
-                
             }
         }
     }
