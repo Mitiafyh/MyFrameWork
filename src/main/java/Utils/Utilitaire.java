@@ -1,6 +1,5 @@
 package Utils;
 
-import annotation.UrlMapping;
 import java.io.File;
 import java.lang.annotation.*;
 import java.lang.reflect.Method;
@@ -10,9 +9,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import annotation.UrlMapping;
+import jakarta.servlet.ServletException;
+
 public class Utilitaire {
 
-    public List<Method> getAllMethodeAnnote(Class<?> classe, Class<? extends Annotation> annotationClass) {
+    public static Map<UrlMethod, Mapping> getMappings(String packageCible) throws Exception {
+        Map<UrlMethod, Mapping> mappingUrls = new HashMap<>();
+        List<Class<?>> classesControllers = getClassesWithAnnotation(packageCible, annotation.Controller.class);
+        if (classesControllers != null) {
+            for (Class<?> classe : classesControllers) {
+                List<Method> methodes = getAllMethodeAnnote(classe, annotation.UrlMapping.class);
+                if (methodes != null && !methodes.isEmpty()) {
+                    for (Method methode : methodes) {
+                        UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
+                        String url = urlMapping.value();
+                        String httpMethod = urlMapping.method().toUpperCase();
+                        HttpMethod method = HttpMethod.valueOf(httpMethod);
+                        UrlMethod urlMethod = new UrlMethod(url, method);
+
+                        if (mappingUrls.containsKey(urlMethod)) {
+                            throw new Exception("Mapping dupliqué : " + url + " " + httpMethod);
+                        }
+
+                        Mapping mapping = new Mapping(classe, methode);
+                        mappingUrls.put(urlMethod, mapping);
+                    }
+                }
+            }
+        }
+        return mappingUrls;
+    }
+
+    public static List<Method> getAllMethodeAnnote(Class<?> classe, Class<? extends Annotation> annotationClass) {
         List<Method> listeMethode = new ArrayList<>();
         Method[] methods = classe.getDeclaredMethods();
         for (Method methode : methods) {
@@ -23,7 +52,7 @@ public class Utilitaire {
         return listeMethode;
     }
 
-    public List<Class<?>> getClassesWithAnnotation(String NomPackage, Class<? extends Annotation> annotationClass) {
+    public static List<Class<?>> getClassesWithAnnotation(String NomPackage, Class<? extends Annotation> annotationClass) {
         List<Class<?>> listeClasse = getAllClasse(NomPackage);
         List<Class<?>> classWithAnnotation = new ArrayList<>();
         for (Class<?> classe : listeClasse) {
@@ -34,7 +63,7 @@ public class Utilitaire {
         return classWithAnnotation;
     }
 
-    public List<Class<?>> getAllClasse(String NomPackage) {
+    public static List<Class<?>> getAllClasse(String NomPackage) {
         List<Class<?>> listClass = new ArrayList<>();
         String path = NomPackage.replace(".", "/");
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();

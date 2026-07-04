@@ -12,46 +12,16 @@ import java.util.List;
 import java.util.Map;
 
 import Utils.*;
-import annotation.UrlMapping;
-import java.rmi.server.ServerCloneException;
 
 public class FrontControllerServlet extends HttpServlet {
 
-    private Map<UrlMethod, Mapping> mappingUrls = new HashMap<>();
-
-    Utilitaire utilitaire = new Utilitaire();
+    private Map<UrlMethod, Mapping> mappingUrls;
 
     @Override
     public void init() throws ServletException {
-        String packageCible = getInitParameter("packageToScan");
-
-        if (packageCible == null || packageCible.isEmpty()) {
-            System.out.println("Erreur : Le paramètre 'packageToScan' n'est pas configuré dans le web.xml !");
-            return;
-        }
-        List<Class<?>> classesControllers = utilitaire.getClassesWithAnnotation(packageCible, annotation.Controller.class);
-        if (classesControllers != null) {
-            for (Class<?> classe : classesControllers) {
-                    List<Method> methodes = utilitaire.getAllMethodeAnnote(classe, annotation.UrlMapping.class);
-                    if (methodes != null && !methodes.isEmpty()) {
-                        for (Method methode : methodes) {
-                            UrlMapping urlMapping = methode.getAnnotation(UrlMapping.class);
-                            String url = urlMapping.value();
-                            String httpMethod = urlMapping.method().toUpperCase();
-                            HttpMethod method = HttpMethod.valueOf(httpMethod);
-                            UrlMethod urlMethod = new UrlMethod(url, method);
-
-                            if (this.mappingUrls.containsKey(urlMethod)) {
-                                throw new ServletException("Erreur : Conflit de mapping pour l'URL " 
-                                + url + " avec la méthode HTTP " + httpMethod 
-                                + ". Deux méthodes annotées avec @UrlMapping ont le même chemin et la même méthode HTTP.");
-                            }
-
-                            Mapping mapping = new Mapping(classe, methode);
-                            this.mappingUrls.put(urlMethod, mapping);
-                        }
-                    }
-            }
+        this.mappingUrls = (Map<UrlMethod, Mapping>) getServletContext().getAttribute("mappingUrls");
+        if (this.mappingUrls == null) {
+            throw new ServletException("Le mapping des URL n'a pas été initialisé. Assurez-vous que le RequestControllerListener est correctement configuré.");
         }
     }
 
