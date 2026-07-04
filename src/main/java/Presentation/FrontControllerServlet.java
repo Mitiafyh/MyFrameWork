@@ -1,5 +1,6 @@
 package Presentation;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +17,8 @@ import Utils.*;
 public class FrontControllerServlet extends HttpServlet {
 
     private Map<UrlMethod, Mapping> mappingUrls;
+    private String prefix;
+    private String suffix;
 
     @Override
     public void init() throws ServletException {
@@ -23,6 +26,9 @@ public class FrontControllerServlet extends HttpServlet {
         if (this.mappingUrls == null) {
             throw new ServletException("Le mapping des URL n'a pas été initialisé. Assurez-vous que le RequestControllerListener est correctement configuré.");
         }
+        this.prefix = getServletContext().getInitParameter("viewPrefix");
+        this.suffix = getServletContext().getInitParameter("viewSuffix");
+
     }
 
     @Override
@@ -59,7 +65,21 @@ public class FrontControllerServlet extends HttpServlet {
                 Class<?> classeDuControleur = cible.getControllerInstance();
                 Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
                 Method methodeAExecuter = cible.getMethode();
-                methodeAExecuter.invoke(instanceControleur);
+                Object resultat = methodeAExecuter.invoke(instanceControleur);
+                if(resultat instanceof ModelAndView){
+                    ModelAndView mv = (ModelAndView) resultat;
+
+                    for(Map.Entry<String, Object> attribut : mv.getAttribut().entrySet()){
+                        request.setAttribute(attribut.getKey(), attribut.getValue());
+                    }
+                    String prochaineVue = mv.getViewName();
+                    String cheminComplet = this.prefix + prochaineVue + this.suffix;
+                    RequestDispatcher dispatcher = request.getRequestDispatcher(cheminComplet);
+                    dispatcher.forward(request, response);
+
+                }else{
+                    out.println("<h3>Route trouvée mais aucun ModelView renvoyé.</h3>");
+                }
 
             } catch (Exception e) {
                 e.printStackTrace(out);
