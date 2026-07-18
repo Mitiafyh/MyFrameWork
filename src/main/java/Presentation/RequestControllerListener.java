@@ -12,13 +12,15 @@ import jakarta.servlet.ServletContextListener;
 
 public class RequestControllerListener implements ServletContextListener {
 
+    private static final String SPRING_ROOT_CONTEXT_ATTRIBUTE = "org.springframework.web.context.WebApplicationContext.ROOT";
+
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         ServletContext servletContext = sce.getServletContext();
 
         String packageCible = servletContext.getInitParameter("packageToScan");
         if (packageCible == null || packageCible.isEmpty()) {
-           throw new RuntimeException("Le paramètre 'packageToScan' n'est pas défini dans le fichier web.xml");
+            throw new RuntimeException("Le paramètre 'packageToScan' n'est pas défini dans le fichier web.xml");
         }
         Map<UrlMethod, Mapping> mappingUrls;
         try {
@@ -29,6 +31,14 @@ public class RequestControllerListener implements ServletContextListener {
             e.printStackTrace();
             throw new RuntimeException("Erreur lors de l'initialisation des mappings", e);
         }
+        Object conteneurSpring = servletContext.getAttribute(SPRING_ROOT_CONTEXT_ATTRIBUTE);
 
+        if (conteneurSpring == null) {
+            throw new RuntimeException(" Le conteneur Spring n'a pas pu être récupéré au démarrage. "
+                    + "Vérifiez l'ordre des listeners dans le web.xml.");
+        }
+
+        servletContext.setAttribute("springContext", conteneurSpring);
+        System.out.println("Conteneur Spring lié à 'springContext' avec succès !");
     }
 }

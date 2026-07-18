@@ -19,10 +19,13 @@ public class FrontControllerServlet extends HttpServlet {
     private Map<UrlMethod, Mapping> mappingUrls;
     private String prefix;
     private String suffix;
+    private Object springContext;
 
+    @SuppressWarnings("unchecked")
     @Override
     public void init() throws ServletException {
         this.mappingUrls = (Map<UrlMethod, Mapping>) getServletContext().getAttribute("mappingUrls");
+        this.springContext = getServletContext().getAttribute("springContext");
         if (this.mappingUrls == null) {
             throw new ServletException("Le mapping des URL n'a pas été initialisé. Assurez-vous que le RequestControllerListener est correctement configuré.");
         }
@@ -65,7 +68,7 @@ public class FrontControllerServlet extends HttpServlet {
                 Class<?> classeDuControleur = cible.getControllerInstance();
                 Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
                 Method methodeAExecuter = cible.getMethode();
-                Object resultat = methodeAExecuter.invoke(instanceControleur);
+                Object resultat = methodeAExecuter.invoke(instanceControleur,springContext);
                 if(resultat instanceof ModelAndView){
                     ModelAndView mv = (ModelAndView) resultat;
 
