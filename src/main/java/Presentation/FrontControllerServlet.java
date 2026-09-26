@@ -11,8 +11,10 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Utils.*;
+import annotation.WebAPI;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -54,22 +56,36 @@ public class FrontControllerServlet extends HttpServlet {
         HttpMethod requestMethod = HttpMethod.valueOf(request.getMethod().toUpperCase());
         UrlMethod urlMethod = new UrlMethod(path, requestMethod);
 
-        response.setContentType("text/html");
-        PrintWriter out = response.getWriter();
-
         if (this.mappingUrls.containsKey(urlMethod)) {
             Mapping cible = this.mappingUrls.get(urlMethod);
-
-            out.println("<h3>Route trouvée !</h3>");
-            out.println("URL  : " + urlMethod.getUrl() + ",methode " + urlMethod.getMethod() + "<br>");
-            out.println("Classe : " + cible.getControllerInstance().getName() + "<br>");
-            out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
+            
+            System.out.println("<h3>Route trouvée !</h3>");
+            System.out.println("URL  : " + urlMethod.getUrl() + ",methode " + urlMethod.getMethod() + "<br>");
+            System.out.println("Classe : " + cible.getControllerInstance().getName() + "<br>");
+            System.out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
+            
             try {
                 Class<?> classeDuControleur = cible.getControllerInstance();
                 Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
                 Method methodeAExecuter = cible.getMethode();
                 Object resultat = methodeAExecuter.invoke(instanceControleur,springContext);
-                if(resultat instanceof ModelAndView){
+               
+                if(methodeAExecuter.isAnnotationPresent(WebAPI.class)){
+
+                response.setContentType("application/json");
+                response.setCharacterEncoding("UTF-8");
+
+                ObjectMapper objectMapper = new ObjectMapper();
+                String jsonConverti= objectMapper.writeValueAsString(resultat);
+
+                PrintWriter out = response.getWriter();
+                out.print(jsonConverti);
+                out.flush();
+
+                }else if(resultat instanceof ModelAndView){
+                    response.setContentType("text/html");
+                    PrintWriter out = response.getWriter();
+
                     ModelAndView mv = (ModelAndView) resultat;
 
                     for(Map.Entry<String, Object> attribut : mv.getAttribut().entrySet()){
@@ -81,14 +97,23 @@ public class FrontControllerServlet extends HttpServlet {
                     dispatcher.forward(request, response);
 
                 }else{
+                    response.setContentType("text/html");
+                    PrintWriter out = response.getWriter();
+                    out.println("<!DOCTYPE html>");
                     out.println("<h3>Route trouvée mais aucun ModelView renvoyé.</h3>");
                 }
 
             } catch (Exception e) {
+                response.setContentType("text/html");
+                PrintWriter out = response.getWriter();
                 e.printStackTrace(out);
+                out.println("<!DOCTYPE html>");
                 out.println("<h3>Erreur lors de l'exécution de la méthode : " + e.getMessage() + "</h3>");
             }
         } else {
+            response.setContentType("text/html");
+            PrintWriter out = response.getWriter();
+            out.println("<!DOCTYPE html>");
             out.println("<h3> Aucune méthode ne correspond à l'URL : " + path + ",methode " + requestMethod + "</h3>");
             out.println("<h3>Liste des routes disponibles :</h3>");
             for (Map.Entry<UrlMethod, Mapping> exist : this.mappingUrls.entrySet()) {
