@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.ApplicationContext;
 
 import Utils.*;
 import annotation.WebAPI;
@@ -77,14 +78,19 @@ public class FrontControllerServlet extends HttpServlet {
                     Parameter param = parametres[i];
                     String nomParam = param.getName();
 
-                    if (request.getParameterMap().containsKey(nomParam)) {
-                        arguments[i] = request.getParameter(nomParam);
+                    if (param.getType() == ApplicationContext.class) {
+                        arguments[i] = springContext;
+                    } else if (request.getParameterMap().containsKey(nomParam)) {
+                        if (param.getType() == String.class) {
 
+                            arguments[i] = request.getParameter(nomParam);
+                        } else if (param.getType() == Integer.class) {
+                            arguments[i] = Integer.parseInt(request.getParameter(nomParam));
+                        }
                     }
-System.out.println("Nom du paramètre réfléchi : " + param.getName());
-System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
+                    System.out.println("Nom du paramètre réfléchi : " + param.getName());
+                    System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
                 }
-                
 
                 Object resultat = methodeAExecuter.invoke(instanceControleur, arguments);
 
