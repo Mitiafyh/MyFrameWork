@@ -9,7 +9,7 @@ PATH_TOMCAT="/home/fiorenantsoa/Documents/tomcat/tomcat"
 cd $PATH_FRAMEWORK
 mkdir -p bin
 echo "Compilation du Servlet..."
-javac -cp "$PATH_FRAMEWORK/lib/*" -d bin src/main/java/annotation/*.java src/main/java/Presentation/*.java src/main/java/Utils/*.java
+javac -parameters -cp "$PATH_FRAMEWORK/lib/*" -d bin src/main/java/annotation/*.java src/main/java/Presentation/*.java src/main/java/Utils/*.java
 
 jar cvf lib/$APP_NAME.jar -C bin .
 

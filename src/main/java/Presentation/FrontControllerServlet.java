@@ -12,9 +12,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.ApplicationContext;
 
 import Utils.*;
 import annotation.WebAPI;
+import java.lang.reflect.Parameter;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -58,37 +60,62 @@ public class FrontControllerServlet extends HttpServlet {
 
         if (this.mappingUrls.containsKey(urlMethod)) {
             Mapping cible = this.mappingUrls.get(urlMethod);
-            
+
             System.out.println("<h3>Route trouvée !</h3>");
             System.out.println("URL  : " + urlMethod.getUrl() + ",methode " + urlMethod.getMethod() + "<br>");
             System.out.println("Classe : " + cible.getControllerInstance().getName() + "<br>");
             System.out.println("Méthode associée : " + cible.getMethode().getName() + "()<br>");
-            
+
             try {
                 Class<?> classeDuControleur = cible.getControllerInstance();
                 Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
                 Method methodeAExecuter = cible.getMethode();
-                Object resultat = methodeAExecuter.invoke(instanceControleur,springContext);
-               
-                if(methodeAExecuter.isAnnotationPresent(WebAPI.class)){
 
-                response.setContentType("application/json");
-                response.setCharacterEncoding("UTF-8");
+                Parameter[] parametres = methodeAExecuter.getParameters();
+                Object[] arguments = new Object[parametres.length];
 
-                ObjectMapper objectMapper = new ObjectMapper();
-                String jsonConverti= objectMapper.writeValueAsString(resultat);
+                for (int i = 0; i < parametres.length; i++) {
+                    Parameter param = parametres[i];
+                    String nomParam = param.getName();
 
-                PrintWriter out = response.getWriter();
-                out.print(jsonConverti);
-                out.flush();
+                    if (param.getType() == ApplicationContext.class) {
+                        arguments[i] = springContext;
+                    } else if (request.getParameterMap().containsKey(nomParam) && request.getParameter(nomParam) != null) {
+                        if (param.getType() == String.class) {
+                            arguments[i] = request.getParameter(nomParam);
+                        } else if (param.getType() == Integer.class) {
+                            arguments[i] = Integer.parseInt(request.getParameter(nomParam));
+                        } else if (param.getType() == double.class) {
+                            arguments[i] = Double.parseDouble(request.getParameter(nomParam));
+                        } else if (param.getType() == Boolean.class) {
+                            arguments[i] = Boolean.parseBoolean(request.getParameter(nomParam));
+                        }
+                        System.out.println("Nom du paramètre réfléchi : " + param.getName());
+                        System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
+                    }
+                }
 
-                }else if(resultat instanceof ModelAndView){
+                Object resultat = methodeAExecuter.invoke(instanceControleur, arguments);
+
+                if (methodeAExecuter.isAnnotationPresent(WebAPI.class)) {
+
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    String jsonConverti = objectMapper.writeValueAsString(resultat);
+
+                    PrintWriter out = response.getWriter();
+                    out.print(jsonConverti);
+                    out.flush();
+
+                } else if (resultat instanceof ModelAndView) {
                     response.setContentType("text/html");
                     PrintWriter out = response.getWriter();
 
                     ModelAndView mv = (ModelAndView) resultat;
 
-                    for(Map.Entry<String, Object> attribut : mv.getAttribut().entrySet()){
+                    for (Map.Entry<String, Object> attribut : mv.getAttribut().entrySet()) {
                         request.setAttribute(attribut.getKey(), attribut.getValue());
                     }
                     String prochaineVue = mv.getViewName();
@@ -96,7 +123,7 @@ public class FrontControllerServlet extends HttpServlet {
                     RequestDispatcher dispatcher = request.getRequestDispatcher(cheminComplet);
                     dispatcher.forward(request, response);
 
-                }else{
+                } else {
                     response.setContentType("text/html");
                     PrintWriter out = response.getWriter();
                     out.println("<!DOCTYPE html>");
