@@ -16,6 +16,7 @@ import org.springframework.context.ApplicationContext;
 
 import Utils.*;
 import annotation.WebAPI;
+import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 
 public class FrontControllerServlet extends HttpServlet {
@@ -80,15 +81,41 @@ public class FrontControllerServlet extends HttpServlet {
 
                     if (param.getType() == ApplicationContext.class) {
                         arguments[i] = springContext;
-                    } else if (request.getParameterMap().containsKey(nomParam) && request.getParameter(nomParam) != null) {
+                    } else {
                         if (param.getType() == String.class) {
                             arguments[i] = request.getParameter(nomParam);
-                        } else if (param.getType() == Integer.class) {
+                        } else if (param.getType() == Integer.class || param.getType() == int.class) {
                             arguments[i] = Integer.parseInt(request.getParameter(nomParam));
-                        } else if (param.getType() == double.class) {
+                        } else if (param.getType() == double.class || param.getType() == Double.class) {
                             arguments[i] = Double.parseDouble(request.getParameter(nomParam));
-                        } else if (param.getType() == Boolean.class) {
+                        } else if (param.getType() == Boolean.class || param.getType() == boolean.class) {
                             arguments[i] = Boolean.parseBoolean(request.getParameter(nomParam));
+                        } else {
+                            arguments[i] = param.getType().getDeclaredConstructor().newInstance();
+                            Field[] attributs = param.getType().getDeclaredFields();
+                            for (int j = 0; j < attributs.length; j++) {
+                                String nomChamp = attributs[j].getName();
+                                if (request.getParameterMap().containsKey(nomChamp)) {
+                                    String valeur = request.getParameter(nomChamp);
+                                    attributs[j].setAccessible(true);
+                                    if (valeur == null || valeur.isEmpty()) {
+                                        if (!attributs[j].getType().isPrimitive()) {
+                                            attributs[j].set(arguments[i], null);
+                                        }
+                                    } else {
+                                        if (attributs[j].getType() == String.class) {
+                                            attributs[j].set(arguments[i], valeur);
+                                        } else if (attributs[j].getType() == int.class || attributs[j].getType() == Integer.class) {
+                                            attributs[j].set(arguments[i], Integer.parseInt(valeur));
+                                        } else if (attributs[j].getType() == double.class || attributs[j].getType() == Double.class) {
+                                            attributs[j].set(arguments[i], Double.parseDouble(valeur));
+                                        } else if (attributs[j].getType() == boolean.class || attributs[j].getType() == Boolean.class) {
+                                            attributs[j].set(arguments[i], Boolean.parseBoolean(valeur));
+                                        }
+                                    }
+                                }
+
+                            }
                         }
                         System.out.println("Nom du paramètre réfléchi : " + param.getName());
                         System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
