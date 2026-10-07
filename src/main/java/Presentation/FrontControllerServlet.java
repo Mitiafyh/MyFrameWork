@@ -16,6 +16,7 @@ import org.springframework.context.ApplicationContext;
 
 import Utils.*;
 import annotation.WebAPI;
+import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 
 public class FrontControllerServlet extends HttpServlet {
@@ -24,6 +25,7 @@ public class FrontControllerServlet extends HttpServlet {
     private String prefix;
     private String suffix;
     private Object springContext;
+    Utilitaire utilitaire = new Utilitaire();
 
     @SuppressWarnings("unchecked")
     @Override
@@ -31,7 +33,8 @@ public class FrontControllerServlet extends HttpServlet {
         this.mappingUrls = (Map<UrlMethod, Mapping>) getServletContext().getAttribute("mappingUrls");
         this.springContext = getServletContext().getAttribute("springContext");
         if (this.mappingUrls == null) {
-            throw new ServletException("Le mapping des URL n'a pas été initialisé. Assurez-vous que le RequestControllerListener est correctement configuré.");
+            throw new ServletException(
+                    "Le mapping des URL n'a pas été initialisé. Assurez-vous que le RequestControllerListener est correctement configuré.");
         }
         this.prefix = getServletContext().getInitParameter("viewPrefix");
         this.suffix = getServletContext().getInitParameter("viewSuffix");
@@ -39,16 +42,19 @@ public class FrontControllerServlet extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         processRequest(request, response);
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         processRequest(request, response);
     }
 
-    protected void processRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         String uri = request.getRequestURI();
         String path = request.getPathInfo();
         if (path == null || path.equals("/")) {
@@ -80,19 +86,35 @@ public class FrontControllerServlet extends HttpServlet {
 
                     if (param.getType() == ApplicationContext.class) {
                         arguments[i] = springContext;
-                    } else if (request.getParameterMap().containsKey(nomParam) && request.getParameter(nomParam) != null) {
-                        if (param.getType() == String.class) {
-                            arguments[i] = request.getParameter(nomParam);
-                        } else if (param.getType() == Integer.class) {
-                            arguments[i] = Integer.parseInt(request.getParameter(nomParam));
-                        } else if (param.getType() == double.class) {
-                            arguments[i] = Double.parseDouble(request.getParameter(nomParam));
-                        } else if (param.getType() == Boolean.class) {
-                            arguments[i] = Boolean.parseBoolean(request.getParameter(nomParam));
+                    } else if (param.getType() == String.class || param.getType() == Integer.class
+                            || param.getType() == int.class || param.getType() == double.class
+                            || param.getType() == Double.class || param.getType() == Boolean.class
+                            || param.getType() == boolean.class) {
+                        arguments[i] = utilitaire.ConvertType(request.getParameter(nomParam), param.getType());
+                    } else {
+                        arguments[i] = param.getType().getDeclaredConstructor().newInstance();
+                        Field[] attributs = param.getType().getDeclaredFields();
+                        for (int j = 0; j < attributs.length; j++) {
+                            Object convert = null;
+                            String nomChamp = attributs[j].getName();
+                            if (request.getParameterMap().containsKey(nomChamp)) {
+                                String valeur = request.getParameter(nomChamp);
+                                attributs[j].setAccessible(true);
+                                if (valeur == null || valeur.isEmpty()) {
+                                    if (!attributs[j].getType().isPrimitive()) {
+                                        attributs[j].set(arguments[i], null);
+                                    }
+                                } else {
+                                    convert = utilitaire.ConvertType(valeur, attributs[j].getType());
+                                    attributs[j].set(arguments[i], convert);
+                                }
+                            }
+
                         }
-                        System.out.println("Nom du paramètre réfléchi : " + param.getName());
-                        System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
                     }
+                    System.out.println("Nom du paramètre réfléchi : " + param.getName());
+                    System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
+
                 }
 
                 Object resultat = methodeAExecuter.invoke(instanceControleur, arguments);
@@ -137,7 +159,9 @@ public class FrontControllerServlet extends HttpServlet {
                 out.println("<!DOCTYPE html>");
                 out.println("<h3>Erreur lors de l'exécution de la méthode : " + e.getMessage() + "</h3>");
             }
-        } else {
+        } else
+
+        {
             response.setContentType("text/html");
             PrintWriter out = response.getWriter();
             out.println("<!DOCTYPE html>");
