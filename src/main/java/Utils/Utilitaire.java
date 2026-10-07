@@ -90,4 +90,17 @@ public class Utilitaire {
         return listClass;
     }
 
+    public Object ConvertType(String param, Class<?> type) throws ServletException {
+        if (type == String.class) {
+            return param;
+        } else if (type == int.class || type == Integer.class) {
+            return Integer.parseInt(param);
+        } else if (type == double.class || type == Double.class) {
+            return Double.parseDouble(param);
+        } else if (type == boolean.class || type == Boolean.class) {
+            return Boolean.parseBoolean(param);
+        }
+        return null;
+    }
+
 }
