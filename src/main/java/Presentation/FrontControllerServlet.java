@@ -94,13 +94,26 @@ public class FrontControllerServlet extends HttpServlet {
                     } else {
                         arguments[i] = param.getType().getDeclaredConstructor().newInstance();
                         Field[] attributs = param.getType().getDeclaredFields();
+
                         for (int j = 0; j < attributs.length; j++) {
                             Object convert = null;
                             String nomChamp = attributs[j].getName();
-                            if (request.getParameterMap().containsKey(nomChamp)) {
-                                String valeur = request.getParameter(nomChamp);
+
+                            String cleParamObject = nomParam + "." + nomChamp;
+                            String cleParamForm = nomParam + "_" + nomChamp;
+
+                            String valeur = null;
+                            if (request.getParameterMap().containsKey(cleParamForm)) {
+                                valeur = request.getParameter(cleParamForm);
+                            } else if (request.getParameterMap().containsKey(cleParamObject)) {
+                                valeur = request.getParameter(cleParamObject);
+                            } else if (request.getParameterMap().containsKey(nomChamp)) {
+                                valeur = request.getParameter(nomChamp);
+                            }
+
+                            if (valeur != null) {
                                 attributs[j].setAccessible(true);
-                                if (valeur == null || valeur.isEmpty()) {
+                                if (valeur.isEmpty()) {
                                     if (!attributs[j].getType().isPrimitive()) {
                                         attributs[j].set(arguments[i], null);
                                     }
