@@ -105,7 +105,7 @@ public class FrontControllerServlet extends HttpServlet {
                         java.util.Set<Integer> indices = new java.util.TreeSet<>();
                         for (String key : request.getParameterMap().keySet()) {
                             String lowerKey = key.toLowerCase();
-                            
+
                             if ((lowerKey.startsWith(prefixeParam + "[") || lowerKey.startsWith(prefixeClasse + "["))
                                     && lowerKey.contains("]")) {
                                 try {
@@ -144,30 +144,77 @@ public class FrontControllerServlet extends HttpServlet {
                                 Field[] attributs = itemClass.getDeclaredFields();
 
                                 for (Field attribut : attributs) {
-                                    String nomChamp = attribut.getName().toLowerCase();
+                                    String nomChamp = attribut.getName();
+                                    Class<?> typeChamp = attribut.getType();
+                                    attribut.setAccessible(true);
 
-                                    String cle1 = prefixeParam + "[" + index + "]." + nomChamp;
-                                    String cle2 = prefixeClasse + "[" + index + "]." + nomChamp;
-                                    String cle3 = prefixeParam + "[" + index + "][" + nomChamp + "]";
+                                    boolean isSimple = typeChamp == String.class || typeChamp == Integer.class
+                                            || typeChamp == int.class || typeChamp == double.class
+                                            || typeChamp == Double.class || typeChamp == Boolean.class
+                                            || typeChamp == boolean.class;
 
-                                    String valeur = null;
-                                    if (request.getParameterMap().containsKey(cle1)) {
-                                        valeur = request.getParameter(cle1);
-                                    } else if (request.getParameterMap().containsKey(cle2)) {
-                                        valeur = request.getParameter(cle2);
-                                    } else if (request.getParameterMap().containsKey(cle3)) {
-                                        valeur = request.getParameter(cle3);
-                                    }
+                                    if (!isSimple && !List.class.isAssignableFrom(typeChamp)) {
+                                        Object sousObjet = typeChamp.getDeclaredConstructor().newInstance();
+                                        Field[] sousAttributs = typeChamp.getDeclaredFields();
 
-                                    if (valeur != null) {
-                                        attribut.setAccessible(true);
-                                        if (valeur.isEmpty()) {
-                                            if (!attribut.getType().isPrimitive()) {
-                                                attribut.set(itemInstance, null);
+                                        for (Field sousAttribut : sousAttributs) {
+                                            String nomSousChamp = sousAttribut.getName();
+                                            sousAttribut.setAccessible(true);
+                                            String cle1 = prefixeParam + "[" + index + "]." + nomChamp + "."
+                                                    + nomSousChamp;
+                                            String cle2 = prefixeClasse + "[" + index + "]." + nomChamp + "."
+                                                    + nomSousChamp;
+                                            String cle3 = prefixeParam + "[" + index + "][" + nomChamp + "]["
+                                                    + nomSousChamp + "]";
+
+                                            String valeur = null;
+                                            if (request.getParameterMap().containsKey(cle1)) {
+                                                valeur = request.getParameter(cle1);
+                                            } else if (request.getParameterMap().containsKey(cle2)) {
+                                                valeur = request.getParameter(cle2);
+                                            } else if (request.getParameterMap().containsKey(cle3)) {
+                                                valeur = request.getParameter(cle3);
                                             }
-                                        } else {
-                                            Object convert = utilitaire.ConvertType(valeur, attribut.getType());
-                                            attribut.set(itemInstance, convert);
+
+                                            if (valeur != null) {
+                                                if (valeur.isEmpty()) {
+                                                    if (!sousAttribut.getType().isPrimitive()) {
+                                                        sousAttribut.set(sousObjet, null);
+                                                    }
+                                                } else {
+                                                    Object convert = utilitaire.ConvertType(valeur,
+                                                            sousAttribut.getType());
+                                                    sousAttribut.set(sousObjet, convert);
+                                                }
+                                            }
+                                        }
+                                        attribut.set(itemInstance, sousObjet);
+
+                                    } else {
+
+                                        String cle1 = prefixeParam + "[" + index + "]." + nomChamp;
+                                        String cle2 = prefixeClasse + "[" + index + "]." + nomChamp;
+                                        String cle3 = prefixeParam + "[" + index + "][" + nomChamp + "]";
+
+                                        String valeur = null;
+                                        if (request.getParameterMap().containsKey(cle1)) {
+                                            valeur = request.getParameter(cle1);
+                                        } else if (request.getParameterMap().containsKey(cle2)) {
+                                            valeur = request.getParameter(cle2);
+                                        } else if (request.getParameterMap().containsKey(cle3)) {
+                                            valeur = request.getParameter(cle3);
+                                        }
+
+                                        if (valeur != null) {
+                                            attribut.setAccessible(true);
+                                            if (valeur.isEmpty()) {
+                                                if (!attribut.getType().isPrimitive()) {
+                                                    attribut.set(itemInstance, null);
+                                                }
+                                            } else {
+                                                Object convert = utilitaire.ConvertType(valeur, attribut.getType());
+                                                attribut.set(itemInstance, convert);
+                                            }
                                         }
                                     }
                                 }
@@ -182,32 +229,73 @@ public class FrontControllerServlet extends HttpServlet {
 
                         for (int j = 0; j < attributs.length; j++) {
                             Object convert = null;
-                            String nomChamp = attributs[j].getName();
+                            Field attribut = attributs[j];
+                            String nomChamp = attribut.getName();
+                            Class<?> typeChamp = attribut.getType();
+                            attribut.setAccessible(true);
 
-                            String cleParamObject = nomParam + "." + nomChamp;
-                            String cleParamForm = nomParam + "_" + nomChamp;
+                            boolean isSimple = typeChamp == String.class || typeChamp == Integer.class
+                                    || typeChamp == int.class || typeChamp == double.class
+                                    || typeChamp == Double.class || typeChamp == Boolean.class
+                                    || typeChamp == boolean.class;
 
-                            String valeur = null;
-                            if (request.getParameterMap().containsKey(cleParamForm)) {
-                                valeur = request.getParameter(cleParamForm);
-                            } else if (request.getParameterMap().containsKey(cleParamObject)) {
-                                valeur = request.getParameter(cleParamObject);
-                            } else if (request.getParameterMap().containsKey(nomChamp)) {
-                                valeur = request.getParameter(nomChamp);
-                            }
+                            if (!isSimple && !List.class.isAssignableFrom(typeChamp)) {
+                                Object sousObjet = typeChamp.getDeclaredConstructor().newInstance();
+                                Field[] sousAttributs = typeChamp.getDeclaredFields();
 
-                            if (valeur != null) {
-                                attributs[j].setAccessible(true);
-                                if (valeur.isEmpty()) {
-                                    if (!attributs[j].getType().isPrimitive()) {
-                                        attributs[j].set(arguments[i], null);
+                                for (Field sousAttribut : sousAttributs) {
+                                    String nomSousChamp = sousAttribut.getName();
+                                    sousAttribut.setAccessible(true);
+
+                                    String cle1 = nomParam + "." + nomChamp + "." + nomSousChamp;
+                                    String cle2 = nomParam + "_" + nomChamp + "_" + nomSousChamp;
+                                    String cle3 = nomChamp + "." + nomSousChamp;
+                                    String valeur = null;
+                                    if (request.getParameterMap().containsKey(cle1)) {
+                                        valeur = request.getParameter(cle1);
+                                    } else if (request.getParameterMap().containsKey(cle2)) {
+                                        valeur = request.getParameter(cle2);
+                                    } else if (request.getParameterMap().containsKey(cle3)) {
+                                        valeur = request.getParameter(cle3);
                                     }
-                                } else {
-                                    convert = utilitaire.ConvertType(valeur, attributs[j].getType());
-                                    attributs[j].set(arguments[i], convert);
+
+                                    if (valeur != null) {
+                                        if (valeur.isEmpty()) {
+                                            if (!sousAttribut.getType().isPrimitive()) {
+                                                sousAttribut.set(sousObjet, null);
+                                            }
+                                        } else {
+                                            convert = utilitaire.ConvertType(valeur, sousAttribut.getType());
+                                            sousAttribut.set(sousObjet, convert);
+                                        }
+                                    }
+                                }
+                                attribut.set(arguments[i], sousObjet);
+                            } else {
+                                String cleParamObject = nomParam + "." + nomChamp;
+                                String cleParamForm = nomParam + "_" + nomChamp;
+
+                                String valeur = null;
+                                if (request.getParameterMap().containsKey(cleParamForm)) {
+                                    valeur = request.getParameter(cleParamForm);
+                                } else if (request.getParameterMap().containsKey(cleParamObject)) {
+                                    valeur = request.getParameter(cleParamObject);
+                                } else if (request.getParameterMap().containsKey(nomChamp)) {
+                                    valeur = request.getParameter(nomChamp);
+                                }
+
+                                if (valeur != null) {
+                                    attributs[j].setAccessible(true);
+                                    if (valeur.isEmpty()) {
+                                        if (!attributs[j].getType().isPrimitive()) {
+                                            attributs[j].set(arguments[i], null);
+                                        }
+                                    } else {
+                                        convert = utilitaire.ConvertType(valeur, attributs[j].getType());
+                                        attributs[j].set(arguments[i], convert);
+                                    }
                                 }
                             }
-
                         }
                     }
                     System.out.println("Nom du paramètre réfléchi : " + param.getName());

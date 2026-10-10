@@ -52,7 +52,8 @@ public class Utilitaire {
         return listeMethode;
     }
 
-    public static List<Class<?>> getClassesWithAnnotation(String NomPackage, Class<? extends Annotation> annotationClass) {
+    public static List<Class<?>> getClassesWithAnnotation(String NomPackage,
+            Class<? extends Annotation> annotationClass) {
         List<Class<?>> listeClasse = getAllClasse(NomPackage);
         List<Class<?>> classWithAnnotation = new ArrayList<>();
         for (Class<?> classe : listeClasse) {
