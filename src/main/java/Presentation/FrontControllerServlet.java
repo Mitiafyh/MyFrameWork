@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +16,8 @@ import org.springframework.context.ApplicationContext;
 
 import Utils.*;
 import annotation.WebAPI;
-import java.lang.reflect.Field;
-import java.lang.reflect.Parameter;
+
+import java.lang.reflect.*;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -91,6 +91,91 @@ public class FrontControllerServlet extends HttpServlet {
                             || param.getType() == Double.class || param.getType() == Boolean.class
                             || param.getType() == boolean.class) {
                         arguments[i] = utilitaire.ConvertType(request.getParameter(nomParam), param.getType());
+                    } else if (List.class.isAssignableFrom(param.getType())) {
+
+                        Type genericType = param.getParameterizedType();
+                        Class<?> itemClass = Object.class;
+                        if (genericType instanceof ParameterizedType) {
+                            ParameterizedType pt = (ParameterizedType) genericType;
+                            itemClass = (Class<?>) pt.getActualTypeArguments()[0];
+                        }
+                        String prefixeParam = param.getName().toLowerCase();
+                        String prefixeClasse = itemClass.getSimpleName().toLowerCase();
+
+                        java.util.Set<Integer> indices = new java.util.TreeSet<>();
+                        for (String key : request.getParameterMap().keySet()) {
+                            String lowerKey = key.toLowerCase();
+                            
+                            if ((lowerKey.startsWith(prefixeParam + "[") || lowerKey.startsWith(prefixeClasse + "["))
+                                    && lowerKey.contains("]")) {
+                                try {
+                                    int start = lowerKey.indexOf('[') + 1;
+                                    int end = lowerKey.indexOf(']');
+                                    int index = Integer.parseInt(lowerKey.substring(start, end));
+                                    indices.add(index);
+                                } catch (NumberFormatException ignored) {
+                                }
+                            }
+                        }
+                        List<Object> listeObjets = new ArrayList<>();
+                        for (int index : indices) {
+                            if (itemClass == String.class || itemClass == Integer.class
+                                    || itemClass == int.class || itemClass == double.class
+                                    || itemClass == Double.class || itemClass == Boolean.class
+                                    || itemClass == boolean.class) {
+
+                                String cle1 = prefixeParam + "[" + index + "]";
+                                String cle2 = prefixeClasse + "[" + index + "]";
+
+                                String valeur = null;
+                                if (request.getParameterMap().containsKey(cle1)) {
+                                    valeur = request.getParameter(cle1);
+                                } else if (request.getParameterMap().containsKey(cle2)) {
+                                    valeur = request.getParameter(cle2);
+                                }
+
+                                if (valeur != null && !valeur.isEmpty()) {
+                                    Object convert = utilitaire.ConvertType(valeur, itemClass);
+                                    listeObjets.add(convert);
+                                }
+
+                            } else {
+                                Object itemInstance = itemClass.getDeclaredConstructor().newInstance();
+                                Field[] attributs = itemClass.getDeclaredFields();
+
+                                for (Field attribut : attributs) {
+                                    String nomChamp = attribut.getName().toLowerCase();
+
+                                    String cle1 = prefixeParam + "[" + index + "]." + nomChamp;
+                                    String cle2 = prefixeClasse + "[" + index + "]." + nomChamp;
+                                    String cle3 = prefixeParam + "[" + index + "][" + nomChamp + "]";
+
+                                    String valeur = null;
+                                    if (request.getParameterMap().containsKey(cle1)) {
+                                        valeur = request.getParameter(cle1);
+                                    } else if (request.getParameterMap().containsKey(cle2)) {
+                                        valeur = request.getParameter(cle2);
+                                    } else if (request.getParameterMap().containsKey(cle3)) {
+                                        valeur = request.getParameter(cle3);
+                                    }
+
+                                    if (valeur != null) {
+                                        attribut.setAccessible(true);
+                                        if (valeur.isEmpty()) {
+                                            if (!attribut.getType().isPrimitive()) {
+                                                attribut.set(itemInstance, null);
+                                            }
+                                        } else {
+                                            Object convert = utilitaire.ConvertType(valeur, attribut.getType());
+                                            attribut.set(itemInstance, convert);
+                                        }
+                                    }
+                                }
+                                listeObjets.add(itemInstance);
+                            }
+                        }
+                        arguments[i] = listeObjets;
+
                     } else {
                         arguments[i] = param.getType().getDeclaredConstructor().newInstance();
                         Field[] attributs = param.getType().getDeclaredFields();
