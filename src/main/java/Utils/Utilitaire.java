@@ -2,6 +2,7 @@ package Utils;
 
 import java.io.File;
 import java.lang.annotation.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 import annotation.UrlMapping;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class Utilitaire {
 
@@ -52,7 +54,8 @@ public class Utilitaire {
         return listeMethode;
     }
 
-    public static List<Class<?>> getClassesWithAnnotation(String NomPackage, Class<? extends Annotation> annotationClass) {
+    public static List<Class<?>> getClassesWithAnnotation(String NomPackage,
+            Class<? extends Annotation> annotationClass) {
         List<Class<?>> listeClasse = getAllClasse(NomPackage);
         List<Class<?>> classWithAnnotation = new ArrayList<>();
         for (Class<?> classe : listeClasse) {
@@ -101,6 +104,82 @@ public class Utilitaire {
             return Boolean.parseBoolean(param);
         }
         return null;
+    }
+
+    public void remplirObjet(Object instance, Class<?> clazz, String basePrefix, HttpServletRequest request)
+            throws Exception {
+        Field[] attributs = clazz.getDeclaredFields();
+
+        for (Field attribut : attributs) {
+            String nomChamp = attribut.getName();
+            Class<?> typeChamp = attribut.getType();
+            attribut.setAccessible(true);
+
+            boolean isSimple = typeChamp == String.class || typeChamp == Integer.class
+                    || typeChamp == int.class || typeChamp == double.class
+                    || typeChamp == Double.class || typeChamp == Boolean.class
+                    || typeChamp == boolean.class;
+
+            if (!isSimple && !List.class.isAssignableFrom(typeChamp)) {
+                Object sousObjet = typeChamp.getDeclaredConstructor().newInstance();
+                Field[] sousAttributs = typeChamp.getDeclaredFields();
+
+                for (Field sousAttribut : sousAttributs) {
+                    String nomSousChamp = sousAttribut.getName();
+                    sousAttribut.setAccessible(true);
+
+                    String cle1 = basePrefix + "." + nomChamp + "." + nomSousChamp;
+                    String cle2 = basePrefix + "_" + nomChamp + "_" + nomSousChamp;
+                    String cle3 = basePrefix + "[" + nomChamp + "][" + nomSousChamp + "]";
+
+                    String valeur = null;
+                    if (request.getParameterMap().containsKey(cle1)) {
+                        valeur = request.getParameter(cle1);
+                    } else if (request.getParameterMap().containsKey(cle2)) {
+                        valeur = request.getParameter(cle2);
+                    } else if (request.getParameterMap().containsKey(cle3)) {
+                        valeur = request.getParameter(cle3);
+                    }
+
+                    if (valeur != null) {
+                        if (valeur.isEmpty()) {
+                            if (!sousAttribut.getType().isPrimitive()) {
+                                sousAttribut.set(sousObjet, null);
+                            }
+                        } else {
+                            Object convert = ConvertType(valeur, sousAttribut.getType());
+                            sousAttribut.set(sousObjet, convert);
+                        }
+                    }
+                }
+                attribut.set(instance, sousObjet);
+
+            } else {
+                String cle1 = basePrefix + "." + nomChamp;
+                String cle2 = basePrefix + "_" + nomChamp;
+                String cle3 = nomChamp;
+
+                String valeur = null;
+                if (request.getParameterMap().containsKey(cle1)) {
+                    valeur = request.getParameter(cle1);
+                } else if (request.getParameterMap().containsKey(cle2)) {
+                    valeur = request.getParameter(cle2);
+                } else if (request.getParameterMap().containsKey(cle3)) {
+                    valeur = request.getParameter(cle3);
+                }
+
+                if (valeur != null) {
+                    if (valeur.isEmpty()) {
+                        if (!typeChamp.isPrimitive()) {
+                            attribut.set(instance, null);
+                        }
+                    } else {
+                        Object convert = ConvertType(valeur, typeChamp);
+                        attribut.set(instance, convert);
+                    }
+                }
+            }
+        }
     }
 
 }

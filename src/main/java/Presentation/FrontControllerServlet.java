@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,8 +16,8 @@ import org.springframework.context.ApplicationContext;
 
 import Utils.*;
 import annotation.WebAPI;
-import java.lang.reflect.Field;
-import java.lang.reflect.Parameter;
+
+import java.lang.reflect.*;
 
 public class FrontControllerServlet extends HttpServlet {
 
@@ -91,26 +91,67 @@ public class FrontControllerServlet extends HttpServlet {
                             || param.getType() == Double.class || param.getType() == Boolean.class
                             || param.getType() == boolean.class) {
                         arguments[i] = utilitaire.ConvertType(request.getParameter(nomParam), param.getType());
-                    } else {
-                        arguments[i] = param.getType().getDeclaredConstructor().newInstance();
-                        Field[] attributs = param.getType().getDeclaredFields();
-                        for (int j = 0; j < attributs.length; j++) {
-                            Object convert = null;
-                            String nomChamp = attributs[j].getName();
-                            if (request.getParameterMap().containsKey(nomChamp)) {
-                                String valeur = request.getParameter(nomChamp);
-                                attributs[j].setAccessible(true);
-                                if (valeur == null || valeur.isEmpty()) {
-                                    if (!attributs[j].getType().isPrimitive()) {
-                                        attributs[j].set(arguments[i], null);
-                                    }
-                                } else {
-                                    convert = utilitaire.ConvertType(valeur, attributs[j].getType());
-                                    attributs[j].set(arguments[i], convert);
+                    } else if (List.class.isAssignableFrom(param.getType())) {
+
+                        Type genericType = param.getParameterizedType();
+                        Class<?> itemClass = Object.class;
+                        if (genericType instanceof ParameterizedType) {
+                            ParameterizedType pt = (ParameterizedType) genericType;
+                            itemClass = (Class<?>) pt.getActualTypeArguments()[0];
+                        }
+                        String prefixeParam = param.getName().toLowerCase();
+                        String prefixeClasse = itemClass.getSimpleName().toLowerCase();
+
+                        java.util.Set<Integer> indices = new java.util.TreeSet<>();
+                        for (String key : request.getParameterMap().keySet()) {
+                            String lowerKey = key.toLowerCase();
+
+                            if ((lowerKey.startsWith(prefixeParam + "[") || lowerKey.startsWith(prefixeClasse + "["))
+                                    && lowerKey.contains("]")) {
+                                try {
+                                    int start = lowerKey.indexOf('[') + 1;
+                                    int end = lowerKey.indexOf(']');
+                                    int index = Integer.parseInt(lowerKey.substring(start, end));
+                                    indices.add(index);
+                                } catch (NumberFormatException ignored) {
                                 }
                             }
-
                         }
+                        List<Object> listeObjets = new ArrayList<>();
+                        for (int index : indices) {
+                            if (itemClass == String.class || itemClass == Integer.class
+                                    || itemClass == int.class || itemClass == double.class
+                                    || itemClass == Double.class || itemClass == Boolean.class
+                                    || itemClass == boolean.class) {
+
+                                String cle1 = prefixeParam + "[" + index + "]";
+                                String cle2 = prefixeClasse + "[" + index + "]";
+
+                                String valeur = null;
+                                if (request.getParameterMap().containsKey(cle1)) {
+                                    valeur = request.getParameter(cle1);
+                                } else if (request.getParameterMap().containsKey(cle2)) {
+                                    valeur = request.getParameter(cle2);
+                                }
+
+                                if (valeur != null && !valeur.isEmpty()) {
+                                    Object convert = utilitaire.ConvertType(valeur, itemClass);
+                                    listeObjets.add(convert);
+                                }
+
+                            } else {
+                                Object itemInstance = itemClass.getDeclaredConstructor().newInstance();
+                                String basePrefix = prefixeParam + "[" + index + "]";
+                                utilitaire.remplirObjet(itemInstance,itemClass,basePrefix,request);
+                                listeObjets.add(itemInstance);
+                            }
+                        }
+                        arguments[i] = listeObjets;
+
+                    } else {
+                        Object objInstance = param.getType().getDeclaredConstructor().newInstance();
+                        utilitaire.remplirObjet(objInstance, param.getType(), nomParam, request);
+                        arguments[i] = objInstance;
                     }
                     System.out.println("Nom du paramètre réfléchi : " + param.getName());
                     System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
