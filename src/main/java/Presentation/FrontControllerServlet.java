@@ -2,6 +2,7 @@ package Presentation;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,6 +20,7 @@ import annotation.WebAPI;
 
 import java.lang.reflect.*;
 
+@MultipartConfig(fileSizeThreshold = 1024 * 1024 * 2, maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 50)
 public class FrontControllerServlet extends HttpServlet {
 
     private Map<UrlMethod, Mapping> mappingUrls;
@@ -142,12 +144,20 @@ public class FrontControllerServlet extends HttpServlet {
                             } else {
                                 Object itemInstance = itemClass.getDeclaredConstructor().newInstance();
                                 String basePrefix = prefixeParam + "[" + index + "]";
-                                utilitaire.remplirObjet(itemInstance,itemClass,basePrefix,request);
+                                utilitaire.remplirObjet(itemInstance, itemClass, basePrefix, request);
                                 listeObjets.add(itemInstance);
                             }
                         }
                         arguments[i] = listeObjets;
 
+                    } else if (param.getType() == MapFile.class) {
+                        String nomParamLower = nomParam.toLowerCase();
+
+                        MapFile mapFile = utilitaire.extraireMapFile(request, nomParam);
+                        if (mapFile == null) {
+                            mapFile = utilitaire.extraireMapFile(request, nomParamLower);
+                        }
+                        arguments[i] = mapFile;
                     } else {
                         Object objInstance = param.getType().getDeclaredConstructor().newInstance();
                         utilitaire.remplirObjet(objInstance, param.getType(), nomParam, request);

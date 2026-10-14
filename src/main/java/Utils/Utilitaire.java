@@ -13,6 +13,7 @@ import java.util.Map;
 import annotation.UrlMapping;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 
 public class Utilitaire {
 
@@ -106,6 +107,42 @@ public class Utilitaire {
         return null;
     }
 
+    public MapFile extraireMapFile(HttpServletRequest request, String nomChampCherche) {
+        try {
+            Part file = null;
+
+            try {
+                file = request.getPart(nomChampCherche);
+            } catch (Exception ignored) {
+            }
+
+            if (file != null && file.getSize() > 0) {
+                MapFile mapFileInstance = new MapFile();
+
+                String nomFile = file.getSubmittedFileName();
+                mapFileInstance.setNom(nomFile);
+
+                String extension = "";
+                if (nomFile != null && nomFile.contains(".")) {
+                    extension = nomFile.substring(nomFile.lastIndexOf("."));
+                }
+                mapFileInstance.setExtension(extension);
+
+                byte[] bytesPrim = file.getInputStream().readAllBytes();
+                Byte[] bytesObj = new Byte[bytesPrim.length];
+                for (int k = 0; k < bytesPrim.length; k++) {
+                    bytesObj[k] = bytesPrim[k];
+                }
+                mapFileInstance.setBytes(bytesObj);
+
+                return mapFileInstance;
+            }
+        } catch (Exception e) {
+            System.out.println("Erreur lors de la lecture du fichier pour MapFile : " + e.getMessage());
+        }
+        return null;
+    }
+
     public void remplirObjet(Object instance, Class<?> clazz, String basePrefix, HttpServletRequest request)
             throws Exception {
         Field[] attributs = clazz.getDeclaredFields();
@@ -120,7 +157,24 @@ public class Utilitaire {
                     || typeChamp == Double.class || typeChamp == Boolean.class
                     || typeChamp == boolean.class;
 
-            if (!isSimple && !List.class.isAssignableFrom(typeChamp)) {
+            boolean isMapFile = typeChamp == MapFile.class;
+
+            if (isMapFile) {
+                String cle1 = basePrefix + "." + nomChamp;
+                String cle2 = basePrefix + "_" + nomChamp;
+                String cle3 = nomChamp;
+
+                MapFile mapFile = extraireMapFile(request, cle1);
+                if (mapFile == null)
+                    mapFile = extraireMapFile(request, cle2);
+                if (mapFile == null)
+                    mapFile = extraireMapFile(request, cle3);
+
+                if (mapFile != null) {
+                    attribut.set(instance, mapFile);
+                }
+                
+            } else if (!isSimple && !List.class.isAssignableFrom(typeChamp)) {
                 Object sousObjet = typeChamp.getDeclaredConstructor().newInstance();
                 Field[] sousAttributs = typeChamp.getDeclaredFields();
 
