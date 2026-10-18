@@ -1,6 +1,8 @@
 package Utils;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.lang.annotation.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -14,6 +16,8 @@ import annotation.UrlMapping;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
+import java.nio.file.*;
+import java.util.Properties;
 
 public class Utilitaire {
 
@@ -143,6 +147,56 @@ public class Utilitaire {
         return null;
     }
 
+    public void sauvegarderMapFile(MapFile mapFile) {
+        String nomFichierProperties = "upload.properties";
+        if (mapFile == null || mapFile.getBytes() == null) {
+            System.out.println("Aucun fichier à sauvegarder.");
+            return;
+        }
+
+        try {
+            Properties props = new Properties();
+            try (InputStream input = getClass().getClassLoader().getResourceAsStream(nomFichierProperties)) {
+                if (input == null) {
+                    throw new RuntimeException("Fichier properties introuvable : " + nomFichierProperties);
+                }
+                props.load(input);
+            }
+
+            String dossierCible = props.getProperty("upload.path");
+            if (dossierCible == null || dossierCible.isEmpty()) {
+                throw new RuntimeException("La propriété 'upload.path' est absente de " + nomFichierProperties);
+            }
+
+            File dossier = new File(dossierCible);
+            if (!dossier.exists()) {
+                dossier.mkdirs();
+            }
+
+            Byte[] bytesObj = mapFile.getBytes();
+            byte[] bytesPrim = new byte[bytesObj.length];
+            for (int i = 0; i < bytesObj.length; i++) {
+                bytesPrim[i] = bytesObj[i];
+            }
+
+            Path cheminDestination = Paths.get(dossierCible, mapFile.getNom());
+
+            try (ByteArrayInputStream inputStream = new ByteArrayInputStream(bytesPrim)) {
+                Files.copy(
+                        inputStream,
+                        cheminDestination,
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            System.out.println(
+                    "Fichier sauvegardé avec succès via Files.copy dans : " + cheminDestination.toAbsolutePath());
+
+        } catch (Exception e) {
+            System.out.println("Erreur lors de la sauvegarde du fichier : " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void remplirObjet(Object instance, Class<?> clazz, String basePrefix, HttpServletRequest request)
             throws Exception {
         Field[] attributs = clazz.getDeclaredFields();
@@ -173,7 +227,7 @@ public class Utilitaire {
                 if (mapFile != null) {
                     attribut.set(instance, mapFile);
                 }
-                
+
             } else if (!isSimple && !List.class.isAssignableFrom(typeChamp)) {
                 Object sousObjet = typeChamp.getDeclaredConstructor().newInstance();
                 Field[] sousAttributs = typeChamp.getDeclaredFields();
