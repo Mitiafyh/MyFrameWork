@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import Utils.Mapping;
+import Utils.Session;
 import Utils.UrlMethod;
 import Utils.Utilitaire;
 import jakarta.servlet.ServletContext;
@@ -38,7 +39,9 @@ public class RequestControllerListener implements ServletContextListener {
                     + "Vérifiez l'ordre des listeners dans le web.xml.");
         }
 
+        Map<String,Session> mySession = new HashMap<>();
         servletContext.setAttribute("springContext", conteneurSpring);
+        servletContext.setAttribute("session", mySession);
         System.out.println("Conteneur Spring lié à 'springContext' avec succès !");
     }
 }
