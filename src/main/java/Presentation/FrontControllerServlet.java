@@ -29,7 +29,6 @@ public class FrontControllerServlet extends HttpServlet {
     private String prefix;
     private String suffix;
     private Object springContext;
-    private Map<String, Session> session;
     Utilitaire utilitaire = new Utilitaire();
 
     @SuppressWarnings("unchecked")
@@ -43,8 +42,7 @@ public class FrontControllerServlet extends HttpServlet {
         }
         this.prefix = getServletContext().getInitParameter("viewPrefix");
         this.suffix = getServletContext().getInitParameter("viewSuffix");
-        this.session = (Map<String, Session>)getServletContext().getAttribute("session");
-
+        
     }
 
     @Override
@@ -93,6 +91,8 @@ public class FrontControllerServlet extends HttpServlet {
                     if (param.getType() == ApplicationContext.class) {
                         arguments[i] = springContext;
                     } else if (param.getType() == Session.class) {
+                         Map<String, Session> session = (Map<String, Session>) getServletContext().getAttribute("session");
+
                         HttpSession httpSession = request.getSession(true);
                         String idSession = httpSession.getId();
                         Session mysession;
