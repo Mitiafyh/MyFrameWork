@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.ApplicationContext;
 
 import Utils.*;
+import annotation.Auth;
 import annotation.WebAPI;
 
 import java.lang.reflect.*;
@@ -29,6 +30,8 @@ public class FrontControllerServlet extends HttpServlet {
     private String prefix;
     private String suffix;
     private Object springContext;
+    private String authSessionKey;
+    private String loginPage;
     Utilitaire utilitaire = new Utilitaire();
 
     @SuppressWarnings("unchecked")
@@ -42,7 +45,8 @@ public class FrontControllerServlet extends HttpServlet {
         }
         this.prefix = getServletContext().getInitParameter("viewPrefix");
         this.suffix = getServletContext().getInitParameter("viewSuffix");
-        
+        this.authSessionKey = getInitParameter("authSessionKey");
+        this.loginPage = getInitParameter("loginPage");
     }
 
     @Override
@@ -81,6 +85,8 @@ public class FrontControllerServlet extends HttpServlet {
                 Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
                 Method methodeAExecuter = cible.getMethode();
 
+                Map<String, Session> session = (Map<String, Session>) getServletContext().getAttribute("session");
+
                 Parameter[] parametres = methodeAExecuter.getParameters();
                 Object[] arguments = new Object[parametres.length];
 
@@ -91,7 +97,6 @@ public class FrontControllerServlet extends HttpServlet {
                     if (param.getType() == ApplicationContext.class) {
                         arguments[i] = springContext;
                     } else if (param.getType() == Session.class) {
-                         Map<String, Session> session = (Map<String, Session>) getServletContext().getAttribute("session");
 
                         HttpSession httpSession = request.getSession(true);
                         String idSession = httpSession.getId();
@@ -181,6 +186,34 @@ public class FrontControllerServlet extends HttpServlet {
                     System.out.println("Nom du paramètre réfléchi : " + param.getName());
                     System.out.println("Clés disponibles dans la requête : " + request.getParameterMap().keySet());
 
+                }
+
+                if (methodeAExecuter.isAnnotationPresent(Auth.class)) {
+                    HttpSession httpSession = request.getSession(false);
+                    String idSession = (httpSession != null) ? httpSession.getId() : null;
+
+                    Session userSession = (idSession != null) ? session.get(idSession) : null;
+
+                    boolean estConnecte = false;
+                    if (userSession != null && authSessionKey != null) {
+
+                        Object valeurAuth = userSession.get(authSessionKey);
+                        if (valeurAuth != null) {
+                            estConnecte = true;
+                        }
+                    }
+
+                    if (!estConnecte) {
+                        if (this.loginPage != null && !this.loginPage.isEmpty()) {
+                            String loginPagePath = this.prefix + this.loginPage + this.suffix;
+                            RequestDispatcher dispatcher = request.getRequestDispatcher(loginPagePath);
+                            dispatcher.forward(request, response);
+                            return;
+                        } else {
+                            throw new RuntimeException(
+                                    "Accès refusé : Vous devez être connecté pour accéder à cette ressource.");
+                        }
+                    }
                 }
 
                 Object resultat = methodeAExecuter.invoke(instanceControleur, arguments);
