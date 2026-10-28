@@ -32,6 +32,7 @@ public class FrontControllerServlet extends HttpServlet {
     private Object springContext;
     private String authSessionKey;
     private String loginPage;
+    private String roleSession;
     Utilitaire utilitaire = new Utilitaire();
 
     @SuppressWarnings("unchecked")
@@ -47,6 +48,7 @@ public class FrontControllerServlet extends HttpServlet {
         this.suffix = getServletContext().getInitParameter("viewSuffix");
         this.authSessionKey = getInitParameter("authSessionKey");
         this.loginPage = getInitParameter("loginPage");
+        this.roleSession = getInitParameter("roleSession");
     }
 
     @Override
@@ -205,6 +207,7 @@ public class FrontControllerServlet extends HttpServlet {
 
                     if (!estConnecte) {
                         if (this.loginPage != null && !this.loginPage.isEmpty()) {
+                            request.setAttribute("erreur", "Veuillez vous connecter pour accéder à cette ressource.");
                             String loginPagePath = this.prefix + this.loginPage + this.suffix;
                             RequestDispatcher dispatcher = request.getRequestDispatcher(loginPagePath);
                             dispatcher.forward(request, response);
@@ -212,6 +215,37 @@ public class FrontControllerServlet extends HttpServlet {
                         } else {
                             throw new RuntimeException(
                                     "Accès refusé : Vous devez être connecté pour accéder à cette ressource.");
+                        }
+                    }
+
+                    Auth auth = methodeAExecuter.getAnnotation(Auth.class);
+                    String[] roles = auth.roles();
+
+                    boolean estAutorise = false;
+                    if (roles == null || roles.length == 0) {
+                        estAutorise = true;
+                    } else if (userSession != null) {
+                        Object valeurRole = userSession.get(this.roleSession);
+                        if (valeurRole != null) {
+                            String roleUtilisateur = valeurRole.toString();
+                            for (String r : roles) {
+                                if (roleUtilisateur.equalsIgnoreCase(r)) {
+                                    estAutorise = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (!estAutorise) {
+                        if (this.loginPage != null && !this.loginPage.isEmpty()) {
+                            request.setAttribute("erreur", "Vous n'avez pas le droit nécessaire pour executer cette méthode");
+                            String loginPagePath = this.prefix + this.loginPage + this.suffix;
+                            RequestDispatcher dispatcher = request.getRequestDispatcher(loginPagePath);
+                            dispatcher.forward(request, response);
+                            return;
+                        } else {
+                            throw new RuntimeException(
+                                    "Accès refusé : Vous n'avez pas le droit nécessaire pour executer cette méthode");
                         }
                     }
                 }
@@ -235,15 +269,20 @@ public class FrontControllerServlet extends HttpServlet {
                     PrintWriter out = response.getWriter();
 
                     ModelAndView mv = (ModelAndView) resultat;
+                    String prochaineVue = mv.getViewName();
+
+                    if (prochaineVue.startsWith("redirect:")) {
+                        String targetUrl = prochaineVue.substring("redirect:".length());
+                        response.sendRedirect(request.getContextPath() + targetUrl);
+                        return;
+                    }
 
                     for (Map.Entry<String, Object> attribut : mv.getAttribut().entrySet()) {
                         request.setAttribute(attribut.getKey(), attribut.getValue());
                     }
-                    String prochaineVue = mv.getViewName();
                     String cheminComplet = this.prefix + prochaineVue + this.suffix;
                     RequestDispatcher dispatcher = request.getRequestDispatcher(cheminComplet);
                     dispatcher.forward(request, response);
-
                 } else {
                     response.setContentType("text/html");
                     PrintWriter out = response.getWriter();
