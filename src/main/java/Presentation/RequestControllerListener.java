@@ -10,6 +10,7 @@ import Utils.Utilitaire;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RequestControllerListener implements ServletContextListener {
 
@@ -38,6 +39,9 @@ public class RequestControllerListener implements ServletContextListener {
             throw new RuntimeException(" Le conteneur Spring n'a pas pu être récupéré au démarrage. "
                     + "Vérifiez l'ordre des listeners dans le web.xml.");
         }
+
+        Map<Class<?>,Object> controlleurSingleton= new ConcurrentHashMap<>();
+        servletContext.setAttribute("controlleurSingleton", controlleurSingleton);
 
         Map<String,Session> mySession = new HashMap<>();
         servletContext.setAttribute("springContext", conteneurSpring);

@@ -84,7 +84,18 @@ public class FrontControllerServlet extends HttpServlet {
 
             try {
                 Class<?> classeDuControleur = cible.getControllerInstance();
-                Object instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
+                Map<Class<?>, Object> controlleurSingleton = (Map<Class<?>, Object>) getServletContext()
+                        .getAttribute("controlleurSingleton");
+
+                Object instanceControleur = controlleurSingleton.get(classeDuControleur);
+                if (instanceControleur == null) {
+                    instanceControleur = classeDuControleur.getDeclaredConstructor().newInstance();
+                    controlleurSingleton.put(classeDuControleur, instanceControleur);
+                    System.out.println("[NOUVELLE INSTANCE] pour : " + classeDuControleur.getName());
+                }else{
+                    System.out.println("[RÉUTILISATION DE L' INSTANCE] de : " + classeDuControleur.getName());
+                }
+
                 Method methodeAExecuter = cible.getMethode();
 
                 Map<String, Session> session = (Map<String, Session>) getServletContext().getAttribute("session");
@@ -238,7 +249,8 @@ public class FrontControllerServlet extends HttpServlet {
                     }
                     if (!estAutorise) {
                         if (this.loginPage != null && !this.loginPage.isEmpty()) {
-                            request.setAttribute("erreur", "Vous n'avez pas le droit nécessaire pour executer cette méthode");
+                            request.setAttribute("erreur",
+                                    "Vous n'avez pas le droit nécessaire pour executer cette méthode");
                             String loginPagePath = this.prefix + this.loginPage + this.suffix;
                             RequestDispatcher dispatcher = request.getRequestDispatcher(loginPagePath);
                             dispatcher.forward(request, response);
